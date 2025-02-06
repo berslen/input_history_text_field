@@ -11,6 +11,9 @@ import '../model/input_history_item.dart';
 typedef HistoryListItemLayoutBuilder = Widget Function(
     InputHistoryController controller, InputHistoryItem value, int index);
 
+typedef HistoryBadgeItemLayoutBuilder = Widget Function(
+    InputHistoryController controller, InputHistoryItem value, int index);
+
 enum ListStyle {
   List,
   Badge,
@@ -69,15 +72,6 @@ class InputHistoryTextField extends StatefulWidget {
   /// max limit of input history
   final int limit;
 
-  /// show input history of edit text focused
-  final bool hasFocusExpand;
-
-  /// icon of input history at left positioned
-  final bool showHistoryIcon;
-
-  /// icon of delete at right positioned
-  final bool showDeleteIcon;
-
   // enabled/disabled of input history
   final bool enableHistory;
 
@@ -90,21 +84,17 @@ class InputHistoryTextField extends StatefulWidget {
   // enabled/disabled saved history
   final bool enableSave;
 
-  /// make the input history list gradually transparent
-  final bool enableOpacityGradient;
+  /// icon of delete at right positioned
+  final bool showDeleteIcon;
 
   /// IconData of delete icon.
-  final IconData? deleteIcon;
+  final Icon? deleteIcon;
 
-  /// Size of delete icon.
-  final double? deleteIconSize;
+  /// icon of input history at left positioned
+  final bool showHistoryIcon;
 
   /// IconData of delete icon.
-  final IconData? historyIcon;
-
-  /// Size of History icon.
-  final double? historyIconSize;
-
+  final Icon? historyIcon;
 
   /// docoration of input history area
   final Decoration? listDecoration;
@@ -112,17 +102,17 @@ class InputHistoryTextField extends StatefulWidget {
   /// offset of history list
   final Offset? listOffset;
 
-  /// customize history icon
-  final IconTheme? historyIconTheme;
+  /// customize list item text style
+  final TextStyle? itemTextStyle;
 
-  /// customize delete icon
-  final IconTheme? deleteIconTheme;
+  /// customize locked list text style
+  final TextStyle? lockedItemTextStyle;
 
-  /// customize list text style
-  final TextStyle? listTextStyle;
-
-  /// customize list all
+  /// customize list items
   final HistoryListItemLayoutBuilder? historyListItemLayoutBuilder;
+
+  /// customize badge items
+  final HistoryBadgeItemLayoutBuilder? historyBadgeItemLayoutBuilder;
 
   /// controller
   final InputHistoryController? inputHistoryController;
@@ -133,64 +123,41 @@ class InputHistoryTextField extends StatefulWidget {
   /// font color
   final Color? textColor;
 
-  /// Badge background color
-  @Deprecated('use `backgroundColor` instead ')
-  final Color? badgeColor;
-
   /// background color
   final Color? backgroundColor;
 
-  /// history icon color
-  final Color? historyIconColor;
+  final List<String>? lockedItems;
 
-  /// delete icon color
-  final Color? deleteIconColor;
-
-  final List<String>? lockItems;
-
-  /// lock item background color
-  final Color? lockBackgroundColor;
-
-  /// lock item font color
-  final Color? lockTextColor;
-
-  final bool updateSelectedHistoryItemDateTime;
+  final bool promoteRecentHistoryItems;
 
   InputHistoryTextField({
     Key? key,
     required this.historyKey,
     this.historyListItemLayoutBuilder,
+    this.historyBadgeItemLayoutBuilder,
     this.textToSingleLine,
     this.inputHistoryController,
     this.onHistoryItemSelected,
     this.limit = 5,
-    this.hasFocusExpand = true,
     this.showHistoryIcon = true,
     this.showDeleteIcon = true,
-    this.enableOpacityGradient = false,
     this.enableHistory = true,
     this.showHistoryList = true,
     this.enableFilterHistory = true,
-    this.updateSelectedHistoryItemDateTime = false,
+    this.promoteRecentHistoryItems = false,
     this.enableSave = true,
-    this.historyIcon = Icons.history,
-    this.deleteIcon = Icons.close,
+    this.historyIcon,
+    this.deleteIcon,
     this.listStyle = ListStyle.List,
-    @Deprecated('use `backgroundColor` instead ') this.badgeColor,
     this.backgroundColor,
     this.textColor,
-    this.historyIconColor,
-    this.deleteIconColor,
     this.listDecoration,
     this.textEditingController,
     this.listOffset,
-    this.lockItems,
-    this.lockTextColor,
+    this.lockedItems,
     this.overlayHeight,
-    this.lockBackgroundColor,
-    this.historyIconTheme,
-    this.deleteIconTheme,
-    this.listTextStyle,
+    this.itemTextStyle,
+    this.lockedItemTextStyle = const TextStyle(fontWeight: FontWeight.bold),
     this.focusNode,
     this.decoration = const InputDecoration(),
     TextInputType? keyboardType,
@@ -233,8 +200,6 @@ class InputHistoryTextField extends StatefulWidget {
     this.buildCounter,
     this.scrollController,
     this.scrollPhysics,
-    this.deleteIconSize,
-    this.historyIconSize,
   })  : smartDashesType = smartDashesType ??
             (obscureText ? SmartDashesType.disabled : SmartDashesType.enabled),
         smartQuotesType = smartQuotesType ??

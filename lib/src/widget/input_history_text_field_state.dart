@@ -49,8 +49,8 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
       widget.historyKey,
       widget.limit,
       widget.textEditingController,
-      widget.updateSelectedHistoryItemDateTime,
-      lockItems: widget.lockItems,
+      widget.promoteRecentHistoryItems,
+      lockItems: widget.lockedItems,
     );
   }
 
@@ -68,10 +68,17 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
     if (_focusNode.hasFocus && _overlayHistoryList == null) {
       _toggleOverlayHistoryList();
     }
-    if (widget.textEditingController!.text != _lastSubmitValue &&
-        !_focusNode.hasFocus) {
-      _saveHistory();
-      _lastSubmitValue = widget.textEditingController!.text;
+    if (!_focusNode.hasFocus) {
+      // If user clicked another field, hide history
+      if (FocusManager.instance.primaryFocus != _focusNode) {
+        _inputHistoryController.hide();
+      }
+
+      // Save history when focus is lost
+      if (widget.textEditingController!.text != _lastSubmitValue) {
+        _saveHistory();
+        _lastSubmitValue = widget.textEditingController!.text;
+      }
     }
   }
 
@@ -134,21 +141,22 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
 
   Decoration _listDecoration() {
     return BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerLowest,
+      color: Theme.of(context).canvasColor,
       borderRadius: BorderRadius.only(
-        bottomLeft: Radius.circular(8),
-        bottomRight: Radius.circular(8),
+        bottomLeft: Radius.circular(6),
+        bottomRight: Radius.circular(6),
       ),
       boxShadow: [
         BoxShadow(
-          color: Theme.of(context).colorScheme.shadow.withOpacity(0.25),
-          offset: Offset(0, 1), // Slight downward offset
-          blurRadius: 1.5,
+          color: Theme.of(context).colorScheme.shadow.withOpacity(0.3),
+          offset: Offset(0, 3), // Slightly stronger downward offset
+          blurRadius: 8, // Higher blur for softer effect
+          spreadRadius: 1, // Slight spread for more natural shadow
         ),
         BoxShadow(
-          color: Theme.of(context).colorScheme.shadow.withOpacity(0.25),
-          offset: Offset(0, 2), // Larger downward offset
-          blurRadius: 5,
+          color: Theme.of(context).colorScheme.shadow.withOpacity(0.15),
+          offset: Offset(0, 1), // Light offset for top surface separation
+          blurRadius: 3,
         ),
       ],
     );
@@ -163,7 +171,7 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
       top: offset.dy +
           render.size.height +
           (widget.listStyle == ListStyle.Badge
-              ? listOffset.dy + 10
+              ? listOffset.dy + 6
               : listOffset.dy),
       left: offset.dx + listOffset.dx,
       width: isShow
@@ -177,10 +185,16 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
             ? ConstrainedBox(
                 constraints: BoxConstraints(
                   maxHeight: widget.overlayHeight!,
+                  maxWidth: render.size.width,
                 ),
                 child: _listContainer(render, isShow),
               )
-            : _listContainer(render, isShow),
+            : ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: render.size.width,
+                ),
+                child: _listContainer(render, isShow),
+              ),
       ),
     );
   }
@@ -198,9 +212,15 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
           if (widget.listStyle == ListStyle.Badge) {
             return Wrap(
               spacing: 8,
-              children: [
-                for (var item in snapshot.data!.all) _badgeHistoryItem(item)
-              ],
+              children: snapshot.data!.all.asMap().entries.map((entry) {
+                int index = entry.key;
+                var item = entry.value;
+                return widget.historyBadgeItemLayoutBuilder?.call(
+                        _inputHistoryController,
+                        snapshot.data!.all[index],
+                        index) ??
+                    _badgeHistoryItem(item);
+              }).toList(),
             );
           } else {
             return ListView.builder(
@@ -208,16 +228,13 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
               padding: EdgeInsets.zero,
               itemCount: snapshot.data!.all.length,
               itemBuilder: (context, index) {
-                return Opacity(
-                  opacity: widget.enableOpacityGradient
-                      ? 1 - index / snapshot.data!.all.length
-                      : 1,
-                  child: widget.historyListItemLayoutBuilder?.call(
-                          _inputHistoryController,
-                          snapshot.data!.all[index],
-                          index) ??
-                      _listHistoryItem(snapshot.data!.all[index]),
-                );
+                return widget.historyListItemLayoutBuilder?.call(
+                        _inputHistoryController,
+                        snapshot.data!.all[index],
+                        index) ??
+                    _listHistoryItem(
+                      snapshot.data!.all[index],
+                    );
               },
             );
           }
@@ -244,7 +261,7 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           /// history icon
-          if (widget.showHistoryIcon) _historyIcon(),
+          if (widget.showHistoryIcon) _historyIcon(true),
           if (widget.showHistoryIcon) SizedBox(width: 4),
 
           /// text
@@ -252,81 +269,70 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
 
           /// delete icon
           if (widget.showDeleteIcon) SizedBox(width: 4),
-          if (widget.showDeleteIcon) _deleteIcon(item)
+          if (widget.showDeleteIcon) _deleteIcon(item, true)
         ],
       ),
     );
   }
 
   Widget _listHistoryItem(InputHistoryItem item) {
-    return Material(
-      color: Colors.transparent, // Make Material background transparent
-      child: ListTile(
-        
-        tileColor: _backgroundColor(item),
-        onTap: () async {
-          _lastSubmitValue = item.text;
-          await _inputHistoryController.select(item.text);
-          widget.onHistoryItemSelected?.call(item.text);
-        },
-        leading: widget.showHistoryIcon ? _historyIcon() : null,
-        trailing: widget.showDeleteIcon ? _deleteIcon(item) : null,
-        title: _historyItemText(item),
-      ),
+    return ListTile(
+      onTap: () async {
+        _lastSubmitValue = item.text;
+        await _inputHistoryController.select(item.text);
+        widget.onHistoryItemSelected?.call(item.text);
+      },
+      leading: widget.showHistoryIcon ? _historyIcon(false) : null,
+      trailing: widget.showDeleteIcon ? _deleteIcon(item, false) : null,
+      title: _historyItemText(item),
     );
   }
 
   Widget _historyItemText(InputHistoryItem item) {
-    return Text(
-      _textToSingleLine.call(item.text),
-      overflow: TextOverflow.ellipsis,
-      style: widget.listTextStyle ??
-          TextStyle(
-            color: _textColor(item),
-          ),
-    );
+    return Text(_textToSingleLine.call(item.text),
+        overflow: TextOverflow.ellipsis,
+        style: item.isLock ? widget.lockedItemTextStyle : widget.itemTextStyle);
   }
 
-  Color? _textColor(InputHistoryItem item) {
-    if (item.isLock) return widget.lockTextColor;
-    return widget.textColor;
-  }
-
-  Color? _backgroundColor(InputHistoryItem item) {
-    if (item.isLock) return widget.lockBackgroundColor;
-    return widget.backgroundColor;
-  }
-
-  Widget _historyIcon() {
-    return widget.historyIconTheme ??
+  Widget _historyIcon(bool isBadge) {
+    return widget.historyIcon ??
         Icon(
-          widget.historyIcon,
-          size: widget.historyIconSize ?? 24,
-          color: widget.historyIconColor,
+          Icons.history,
+          size: isBadge ? 20 : null,
         );
   }
 
-  Widget _deleteIcon(InputHistoryItem item) {
+  Widget _deleteIcon(InputHistoryItem item, bool isBadge) {
     if (item.isLock) return SizedBox.shrink();
-    return IconButton(
-      padding: EdgeInsets.zero,
-      constraints: BoxConstraints.tight(
-        Size(
-          widget.deleteIconSize ?? 24,
-          widget.deleteIconSize ?? 24,
+    if (isBadge) {
+      return InkWell(
+        onTap: () {
+          _inputHistoryController.remove(item);
+        },
+        child: widget.deleteIcon ??
+            Icon(
+              Icons.close,
+              size: 20,
+            ),
+      );
+    } else {
+      return SizedBox(
+        height: 24,
+        width: 24,
+        child: IconButton(
+          padding: EdgeInsets.zero,
+          constraints: BoxConstraints(),
+          visualDensity: VisualDensity.compact,
+          icon: widget.deleteIcon ??
+              Icon(
+                Icons.close,
+              ),
+          onPressed: () {
+            _inputHistoryController.remove(item);
+          },
         ),
-      ),
-      visualDensity: VisualDensity.compact,
-      icon: widget.deleteIconTheme ??
-          Icon(
-            widget.deleteIcon,
-            size: widget.deleteIconSize ?? 24,
-            color: widget.deleteIconColor,
-          ),
-      onPressed: () {
-        _inputHistoryController.remove(item);
-      },
-    );
+      );
+    }
   }
 
   void _onTap() {
@@ -334,9 +340,14 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
         _lastSubmitValue != null) {
       widget.onTap?.call();
     }
-    _focusNode.requestFocus();
-    if (widget.textEditingController == null) return;
-    _toggleOverlayHistoryList();
+    if (!_focusNode.hasFocus) {
+      _focusNode.requestFocus();
+      Future.delayed(Duration(milliseconds: 100), () {
+        _toggleOverlayHistoryList();
+      });
+    } else {
+      _toggleOverlayHistoryList();
+    }
   }
 
   String _defaultTextToSingleLine(String text) {
@@ -344,7 +355,7 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
   }
 
   Widget _textField() {
-    return TextField(
+    return TextFormField(
         onTapOutside: (event) async {
           RenderBox? overlayBox = _overlayHistoryListKey.currentContext
               ?.findRenderObject() as RenderBox?;
@@ -366,7 +377,7 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
                 globalTapPosition.dy >= overlayPosition.dy &&
                 globalTapPosition.dy <=
                     overlayPosition.dy + overlaySize.height);
-           
+
             // If tapped outside the overlay, close the overlay
             if (tappedOutside) {
               _focusNode.unfocus();
@@ -406,7 +417,6 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
         maxLengthEnforcement: widget.maxLengthEnforcement,
         onChanged: widget.onChanged,
         onEditingComplete: widget.onEditingComplete,
-        onSubmitted: widget.onSubmitted,
         inputFormatters: widget.inputFormatters,
         enabled: widget.enabled,
         cursorWidth: widget.cursorWidth,

@@ -14,7 +14,7 @@ class InputHistoryController {
   late int _limit;
   late TextEditingController _textEditingController;
   late List<String>? _lockItems;
-  late bool _updateSelectedHistoryItemDateTime;
+  late bool _promoteRecentHistoryItem;
 
   bool _isShow = false;
   late InputHistoryItems _histories;
@@ -28,14 +28,14 @@ class InputHistoryController {
     String historyKey,
     int limit,
     _textEditingController,
-    bool updateSelectedHistoryItemDateTime, {
+    bool _promoteRecentHistoryItem, {
     List<String>? lockItems,
   }) {
     this._historyKey = historyKey;
     this._limit = limit;
     this._lockItems = lockItems;
     this._textEditingController = _textEditingController;
-    this._updateSelectedHistoryItemDateTime = updateSelectedHistoryItemDateTime;
+    this._promoteRecentHistoryItem = _promoteRecentHistoryItem;
     this._init();
   }
 
@@ -124,8 +124,8 @@ class InputHistoryController {
 
   Future<void> _load() async {
     final items = await this._loadPreference();
-    this._parseToHistories(items);
     this._parseLockItems();
+    this._parseToHistories(items);
   }
 
   void _parseLockItems() {
@@ -192,7 +192,7 @@ class InputHistoryController {
 
   Future<void> select(String text) async {
     this._textEditingController.text = text;
-    if (_updateSelectedHistoryItemDateTime) {
+    if (_promoteRecentHistoryItem) {
       _histories.updateByText(text);
       await _save();
     }

@@ -5,31 +5,54 @@ void main() {
   runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool isDarkMode = false;
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Sample',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
+      themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      theme: ThemeData.light(useMaterial3: true),
+      darkTheme: ThemeData.dark(useMaterial3: true),
       home: Scaffold(
         appBar: AppBar(
-          title: Text("Sampe"),
+          title: Text("Sample"),
         ),
         body: SingleChildScrollView(
           padding: EdgeInsets.all(50),
           child: Column(
             children: <Widget>[
-              Text('Enter text and done'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.light_mode, color: Colors.yellow),
+                  Switch(
+                    value: isDarkMode,
+                    onChanged: (value) {
+                      setState(() {
+                        isDarkMode = value;
+                      });
+                    },
+                  ),
+                  Icon(Icons.dark_mode, color: Colors.black),
+                ],
+              ),
 
               /// sample 1
               /// - list
               InputHistoryTextField(
                 historyKey: "01",
                 listStyle: ListStyle.List,
-                decoration: InputDecoration(hintText: 'List type'),
+                lockedItems: [
+                  'Flutter',
+                ],
+                decoration: InputDecoration(hintText: 'List'),
               ),
 
               /// sample 2
@@ -38,9 +61,12 @@ class MyApp extends StatelessWidget {
                 historyKey: "02",
                 listStyle: ListStyle.List,
                 onHistoryItemSelected: (value) => print(value),
-                updateSelectedHistoryItemDateTime: true,
+                lockedItems: [
+                  'Flutter',
+                ],
+                promoteRecentHistoryItems: true,
                 decoration: InputDecoration(
-                    hintText: 'List type (update in descending order)'),
+                    hintText: 'List with promoteRecentHistoryItem'),
               ),
 
               /// sample 3
@@ -49,10 +75,7 @@ class MyApp extends StatelessWidget {
                 historyKey: "03",
                 listStyle: ListStyle.Badge,
                 showHistoryIcon: false,
-                backgroundColor: Colors.lightBlue,
-                textColor: Colors.white,
-                deleteIconColor: Colors.white,
-                decoration: InputDecoration(hintText: 'Badge type'),
+                decoration: InputDecoration(hintText: 'Badge'),
               ),
 
               /// sample 4
@@ -60,59 +83,30 @@ class MyApp extends StatelessWidget {
               InputHistoryTextField(
                 historyKey: "04",
                 listStyle: ListStyle.Badge,
-                lockBackgroundColor: Colors.brown.withAlpha(90),
-                lockTextColor: Colors.black,
-                lockItems: ['Flutter', 'Rails', 'React', 'Vue'],
+                lockedItems: ['Flutter', 'Rails', 'React', 'Vue'],
                 showHistoryIcon: false,
-                deleteIconColor: Colors.white,
-                textColor: Colors.white,
-                backgroundColor: Colors.pinkAccent,
-                decoration: InputDecoration(hintText: 'Fixed list'),
+                decoration:
+                    InputDecoration(hintText: 'Badge with Locked Items'),
               ),
 
               /// sample 5
               /// - customize
               InputHistoryTextField(
                 historyKey: "05",
-                minLines: 2,
-                maxLines: 10,
                 limit: 3,
                 enableHistory: true,
-                hasFocusExpand: true,
                 showHistoryIcon: true,
                 showDeleteIcon: true,
-                historyIcon: Icons.add,
-                deleteIcon: Icons.delete,
-                enableOpacityGradient: false,
                 decoration: InputDecoration(hintText: 'Customize list'),
-                listRowDecoration: BoxDecoration(
-                  border: Border(
-                    left: BorderSide(color: Colors.red, width: 3),
-                  ),
-                ),
                 listDecoration: BoxDecoration(
-                  color: Colors.white60,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.blueGrey
+                      : Colors.grey,
                   borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(4),
-                      bottomRight: Radius.circular(4)),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.grey.withOpacity(0.2),
-                        spreadRadius: 2,
-                        blurRadius: 2,
-                        offset: Offset(0, 3)),
-                  ],
+                      bottomLeft: Radius.circular(2),
+                      bottomRight: Radius.circular(2)),
                 ),
-                historyIconTheme: IconTheme(
-                  data: IconThemeData(color: Colors.red, size: 12),
-                  child: Icon(Icons.add),
-                ),
-                deleteIconTheme: IconTheme(
-                  data: IconThemeData(color: Colors.blue, size: 12),
-                  child: Icon(Icons.remove_circle),
-                ),
-                listOffset: Offset(0, 5),
-                listTextStyle: TextStyle(fontSize: 30),
+                lockedItems: ['Flutter'],
                 historyListItemLayoutBuilder: (controller, value, index) {
                   return InkWell(
                     onTap: () => controller.select(value.text),
@@ -121,8 +115,10 @@ class MyApp extends StatelessWidget {
                         Expanded(
                           flex: 1,
                           child: Container(
-                              margin: const EdgeInsets.only(left: 10.0),
-                              padding: const EdgeInsets.only(left: 10.0),
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
                                 border: Border(
                                   left: BorderSide(
@@ -152,16 +148,17 @@ class MyApp extends StatelessWidget {
                                 ],
                               )),
                         ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.close,
-                            size: 16,
-                            color: Theme.of(context).disabledColor,
+                        if (!value.isLock)
+                          IconButton(
+                            color: Colors.black,
+                            icon: Icon(
+                              Icons.close,
+                              size: 18,
+                            ),
+                            onPressed: () {
+                              controller.remove(value);
+                            },
                           ),
-                          onPressed: () {
-                            controller.remove(value);
-                          },
-                        ),
                       ],
                     ),
                   );
