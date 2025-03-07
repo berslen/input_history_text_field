@@ -92,7 +92,9 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
   void dispose() {
     super.dispose();
     _inputHistoryController.dispose();
-    _focusNode.dispose();
+    if(widget.focusNode == null){
+      _focusNode.dispose();
+    }
     _overlayHistoryList?.remove();
   }
 
