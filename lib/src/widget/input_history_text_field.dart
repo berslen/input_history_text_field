@@ -120,12 +120,6 @@ class InputHistoryTextField extends StatefulWidget {
   /// style List or Badge
   final ListStyle? listStyle;
 
-  /// font color
-  final Color? textColor;
-
-  /// background color
-  final Color? backgroundColor;
-
   final List<String>? lockedItems;
 
   final bool promoteRecentHistoryItems;
@@ -149,8 +143,6 @@ class InputHistoryTextField extends StatefulWidget {
     this.historyIcon,
     this.deleteIcon,
     this.listStyle = ListStyle.List,
-    this.backgroundColor,
-    this.textColor,
     this.listDecoration,
     this.textEditingController,
     this.listOffset,

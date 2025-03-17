@@ -62,6 +62,9 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
   }
 
   void _onFocusChange() {
+    if (widget.readOnly) {
+      return;
+    }
     if (_overlayHistoryList == null) {
       _initOverlay(); // Initialize the overlay right away
     }
@@ -150,13 +153,13 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
       ),
       boxShadow: [
         BoxShadow(
-          color: Theme.of(context).colorScheme.shadow.withOpacity(0.3),
+          color: Theme.of(context).colorScheme.shadow.withValues(alpha: .3),
           offset: Offset(0, 3), // Slightly stronger downward offset
           blurRadius: 8, // Higher blur for softer effect
           spreadRadius: 1, // Slight spread for more natural shadow
         ),
         BoxShadow(
-          color: Theme.of(context).colorScheme.shadow.withOpacity(0.15),
+          color: Theme.of(context).colorScheme.shadow.withValues(alpha: .15),
           offset: Offset(0, 1), // Light offset for top surface separation
           blurRadius: 3,
         ),
@@ -284,16 +287,29 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
   }
 
   Widget _listHistoryItem(InputHistoryItem item) {
-    return ListTile(
+    return InkWell(
       onTap: () async {
         _lastSubmitValue = item.text;
         await _inputHistoryController.select(item.text);
         widget.onHistoryItemSelected?.call(item.text);
       },
-      contentPadding: EdgeInsets.symmetric(horizontal: 12),
-      leading: widget.showHistoryIcon ? _historyIcon(false) : null,
-      trailing: widget.showDeleteIcon ? _deleteIcon(item, false) : null,
-      title: _historyItemText(item),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            if (widget.showHistoryIcon) _historyIcon(false),
+            if (widget.showHistoryIcon) SizedBox(width: 12),
+            Expanded(
+              child: Tooltip(
+                message: item.text,
+                child: _historyItemText(item),
+              ),
+            ),
+            if (widget.showDeleteIcon) SizedBox(width: 12),
+            if (widget.showDeleteIcon) _deleteIcon(item, false)
+          ],
+        ),
+      ),
     );
   }
 
