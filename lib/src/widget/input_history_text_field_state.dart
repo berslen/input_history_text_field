@@ -92,7 +92,7 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
   void dispose() {
     super.dispose();
     _inputHistoryController.dispose();
-    if(widget.focusNode == null){
+    if (widget.focusNode == null) {
       _focusNode.dispose();
     }
     _overlayHistoryList?.remove();
@@ -206,41 +206,47 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
       decoration: widget.listStyle == ListStyle.Badge
           ? null
           : widget.listDecoration ?? _listDecoration(),
-      child: StreamBuilder<InputHistoryItems>(
-        stream: _inputHistoryController.list.stream,
-        builder: (context, snapshot) {
-          if (!snapshot.hasData || snapshot.hasError || !isShow)
-            return SizedBox.shrink();
-          if (widget.listStyle == ListStyle.Badge) {
-            return Wrap(
-              spacing: 8,
-              children: snapshot.data!.all.asMap().entries.map((entry) {
-                int index = entry.key;
-                var item = entry.value;
-                return widget.historyBadgeItemLayoutBuilder?.call(
-                        _inputHistoryController,
+      child: ClipRRect(
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(6),
+          bottomRight: Radius.circular(6),
+        ),
+        child: StreamBuilder<InputHistoryItems>(
+          stream: _inputHistoryController.list.stream,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData || snapshot.hasError || !isShow)
+              return SizedBox.shrink();
+            if (widget.listStyle == ListStyle.Badge) {
+              return Wrap(
+                spacing: 8,
+                children: snapshot.data!.all.asMap().entries.map((entry) {
+                  int index = entry.key;
+                  var item = entry.value;
+                  return widget.historyBadgeItemLayoutBuilder?.call(
+                          _inputHistoryController,
+                          snapshot.data!.all[index],
+                          index) ??
+                      _badgeHistoryItem(item);
+                }).toList(),
+              );
+            } else {
+              return ListView.builder(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                itemCount: snapshot.data!.all.length,
+                itemBuilder: (context, index) {
+                  return widget.historyListItemLayoutBuilder?.call(
+                          _inputHistoryController,
+                          snapshot.data!.all[index],
+                          index) ??
+                      _listHistoryItem(
                         snapshot.data!.all[index],
-                        index) ??
-                    _badgeHistoryItem(item);
-              }).toList(),
-            );
-          } else {
-            return ListView.builder(
-              shrinkWrap: true,
-              padding: EdgeInsets.zero,
-              itemCount: snapshot.data!.all.length,
-              itemBuilder: (context, index) {
-                return widget.historyListItemLayoutBuilder?.call(
-                        _inputHistoryController,
-                        snapshot.data!.all[index],
-                        index) ??
-                    _listHistoryItem(
-                      snapshot.data!.all[index],
-                    );
-              },
-            );
-          }
-        },
+                      );
+                },
+              );
+            }
+          },
+        ),
       ),
     );
   }
@@ -284,6 +290,7 @@ class InputHistoryTextFieldState extends State<InputHistoryTextField> {
         await _inputHistoryController.select(item.text);
         widget.onHistoryItemSelected?.call(item.text);
       },
+      contentPadding: EdgeInsets.symmetric(horizontal: 12),
       leading: widget.showHistoryIcon ? _historyIcon(false) : null,
       trailing: widget.showDeleteIcon ? _deleteIcon(item, false) : null,
       title: _historyItemText(item),
